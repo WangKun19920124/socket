@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 	struct sockaddr_in addr_serv;
 	memset(&addr_serv, 0, sizeof(addr_serv));
 	addr_serv.sin_family = AF_INET;
-	addr_serv.sin_addr.s_addr = htonl(atoi(argv[1]));
+	addr_serv.sin_addr.s_addr = inet_addr(argv[1]);
 	addr_serv.sin_port = htons(atoi(argv[2]));
 	
 	sock_clnt = connect(sock_clnt, (struct sockaddr*)&addr_serv, sizeof(addr_serv));

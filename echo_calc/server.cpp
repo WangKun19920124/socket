@@ -5,111 +5,136 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<cstring>
-#include<string>
+#include<string.h>
 using namespace std;
 
 #define BUF_SIZE 1024
 #define RLZ_SIZE 4
 #define NUM_SIZE 4
 
-int sock_listen;
-int sock_clnt;
-sockaddr_in addr_serv;
-memset(&addr_serv, 0, sizeof(addr_serv));
-
-sockaddr_in addr_clnt;
-socklen_t addr_clnt_sz = sizeof(sockaddr_in);
-
-void errorOutput(string errMsg){
-	cout<<errMsg<<endl;
+int calc(char cnt_num, char* buffer, char op){
+	int result_temp = buffer[0] - '0';
+	int num_cnt_temp = cnt_num - '0';
+	switch(op){
+		case '+':
+			for(int i=1;i < num_cnt_temp;i++){
+				result_temp += (buffer[i] - '0'); 
+			}
+			break;
+		case '-':
+			for(int i=1;i < num_cnt_temp;i++){
+				result_temp -= (buffer[i] - '0');
+			}
+			break;
+		case '*':
+			for(int i=1;i < num_cnt_temp;i++){
+				result_temp *= (buffer[i] - '0');
+			}
+	}
+	return result_temp;
+	
 }
 
-void tcp_server_conn(){
-	sock_listen = socket(PF_INET, SOCK_STREAM, 0);
-	if(sock_listen == -1){
-		errorOutput("socket error..");
+
+int main(int argc, char** argv){
+	int sock_listen;
+	int sock_clnt;
+	struct sockaddr_in addr_serv;
+	memset(&addr_serv, 0, sizeof(addr_serv));
+	struct sockaddr_in addr_clnt;
+	socklen_t addr_clnt_sz = sizeof(addr_clnt);
+	char buff[BUF_SIZE];
+
+	if(argc!=2){
+		cout<<"format:"<<argv[0]<<"<port>"<<endl;
 	}
 
 	addr_serv.sin_family = AF_INET;
 	addr_serv.sin_addr.s_addr = htonl(INADDR_ANY);
-	addr_serv.port = htons(atoi(argv[1]));
-
-	if(bind(sock_serv, (sockaddr*)&addr_serv, 0) == -1){
-		errorOutput("bind error");
+	addr_serv.sin_port = htons(atoi(argv[1]));
+	
+	sock_listen = socket(PF_INET, SOCK_STREAM, 0);
+	if(sock_listen == -1){
+		cout<<"socket error.."<<endl;
 	}
 
-	if(listen(sock_serv, 5)){
-		errorOutput("listen error");
+	if(bind(sock_listen, (sockaddr*)&addr_serv, sizeof(addr_serv))==-1){
+		cout<<"bind error.."<<endl;
+	}
+	
+	if(listen(sock_listen, 10) == -1){
+		cout<<"listen error.."<<endl;
 	}
 
-	sock_clnt = accept(sock_serv, (sockaddr*)&addr_clnt, &addr_clnt_sz);
-
+	sock_clnt = accept(sock_listen, (sockaddr*)&addr_clnt, &addr_clnt_sz);
 	if(sock_clnt == -1){
-		errorOutput("accept error..");
+		cout<<"accept error.."<<endl;
 	}else{
 		cout<<"server connected!!"<<endl;
 	}
-}
 
-int calc(int cnt_num, char* buffer, char op){
-	int result_temp = buffer[0];
-	switch(op){
-		case '+':
-			for(int i=0;i<cnt_num;i++){
-				result_temp+=buffer[i];
-			}
-			break;
-		case '-':
-			for(int i=0;i<cnt_num;i++){
-				result_temp-=buffer[i];
-			}
-			break;
-		case '*':
-			for(int i=0;i<cnt_num;i++){
-				result_temp*=buffer[i];
-			}
-	}
-	return result_temp;
-}
-
-int main(int argc, char** argv){
-	tcp_server_conn();
-
-	for(int i=0;i<2;i++){
-		unsigned int num_cnt =0;	//num_cnt在buff中仅1byte，所以用无符最好，表示0~255范围数字
+	while(1){
+		char num_cnt;
 		int result = 0;
-		if(read(sock_clnt, (char*)&num_cnt, 1)==-1){
-			errorOutput("read num count error..");
+		if(read(sock_clnt,&num_cnt,1)==-1){
+			cout<<"read error.."<<endl;
 		}
-
+		cout<<"num_clnt="<<num_cnt<<endl;
+		
 		int recv_total = 0;
 		int recv_temp = 0;
 
-		while(recv_total < num_cnt*NUM_SIZE + 1){
-			recv_temp = read(sock_clnt, &buff[recv_total], BUF_SIZE - recv_total);
+		while(recv_total < (int)(num_cnt - '0') + 1){
+			recv_temp = read(sock_clnt, &buff, BUF_SIZE);
+			recv_total += recv_temp;
 			if(recv_temp == -1){
-				errorOutput("read num and operator error..");
-			}else{
-				recv_total += recv_temp;
-			}		
-			
-			if(recv_total == num_cnt*NUM_SIZE + 1){
+				cout<<"read error.."<<endl;
+			}else if(recv_total == (int)(num_cnt - '0') +1){
 				cout<<"all data has been received!!"<<endl;
 			}
-
 		}
-		char oper = buffer[recv_total-1];
+
+		char oper = buff[recv_total - 1];
 		result = calc(num_cnt, buff, oper);
 
-		if(write(sock_clnt, &result, RLZ_SIZE) == -1){
-			cout<<"server write result error.."<<endl;
+		int send_total = 0;
+		int send_temp = 0;
+		while(send_total < RLZ_SIZE){
+			send_temp = write(sock_clnt, &result, RLZ_SIZE);
+			if(send_temp == -1){
+				cout<<"server write result error.."<<endl;
+			}else{
+				send_total += send_temp;
+			}
+			
 		}
 
 		close(sock_clnt);
-
 	}
-	close(sock_listen);
 
-	cin.get();
+	close(sock_listen);
 	return 0;
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

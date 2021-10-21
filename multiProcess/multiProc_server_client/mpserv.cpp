@@ -26,7 +26,7 @@ int main(int argc, char** argv)
 	//僵尸子进程销毁
 	struct sigaction act;
 	act.sa_handler = child_proc;
-	sigemptyset(&act.sa_mask);
+//	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	sigaction(SIGCHLD,&act,0);
 	//通信，父进程负责连接，子进程负责通信
@@ -81,13 +81,18 @@ int main(int argc, char** argv)
 				write(sock_clnt, buf, len_r);	
 			}
 			close(sock_clnt);
+			cout<<"child proc return"<<endl;
+			return 1;
 			
 		}else{
+			cout<<"create child proc id = "<<pid<<endl;
 			close(sock_clnt);	//父进程将自己的sock_clnt文件描述符关闭
 					
 		}
 		
 		close(sock_listen);
+		//sleep(600);
+		cout<<"father proc return"<<endl;
 		return 0;
 
 	}
